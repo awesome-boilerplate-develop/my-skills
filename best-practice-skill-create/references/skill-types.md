@@ -18,7 +18,7 @@ Không có phân loại chính thức trong tài liệu Anthropic. Bảng này r
 
 | Type | Ví dụ thật | Cấu trúc | Evals |
 |---|---|---|---|
-| A Artifact | `docx` `pptx` `xlsx` `pdf` | SKILL.md + `scripts/` bắt buộc + `assets/` nếu có mẫu | Rất nên — output khách quan |
+| A Artifact | `docx` `pptx` `xlsx` `pdf` | SKILL.md + `scripts/` khi cần helper dùng lại + `assets/` nếu có mẫu | Rất nên — output khách quan |
 | B Workflow | `skill-creator` `import-memory` | SKILL.md + `references/` + `agents/` + `scripts/` | Chấm theo bước hoàn thành |
 | C Router | `file-reading` | Chỉ SKILL.md, thường dài | Nhẹ — test trigger |
 | D Knowledge | `product-self-knowledge` | SKILL.md ngắn + `references/` | Kiểm tính đúng |

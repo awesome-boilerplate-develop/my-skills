@@ -1,3 +1,5 @@
+> Bảng runtime bên dưới dành cho Claude Code; kiểm tra phiên bản đích trước khi dùng tính năng mở rộng. Profile portable theo [Agent Skills specification](https://agentskills.io/specification), với `name` và `description` bắt buộc.
+
 # Frontmatter & cấu hình — tra cứu đầy đủ
 
 Đọc file này khi cần chi tiết vượt bảng tóm tắt trong SKILL.md.
@@ -57,7 +59,7 @@ Mọi field đều tùy chọn. Chỉ `description` là khuyến nghị.
 | `shell` | Thực thi | `bash` (mặc định) hoặc `powershell` |
 | `argument-hint` | Đối số | Hiển thị trong autocomplete |
 | `arguments` | Đối số | Tên đối số vị trí, cho `$tên` |
-| `metadata` | Meta | Map tự do. Giá trị không phải map bị bỏ qua |
+| `metadata` | Meta | Profile portable yêu cầu map string → string |
 | `license` | Meta | Thuộc spec, Claude Code không xử lý |
 | `compatibility` | Meta | Thuộc spec, tối đa 500 ký tự |
 
@@ -129,11 +131,11 @@ Tắt toàn cục: `"disableSkillShellExecution": true` trong settings.
 
 ## Vòng đời nội dung skill
 
-Khi skill được gọi, nội dung render vào hội thoại như **một message và ở lại đến hết session**. Claude Code không đọc lại file ở lượt sau.
+Khi skill được gọi, nội dung render vào hội thoại như một message; việc giữ lại phụ thuộc compaction và runtime. Claude Code không đọc lại file ở lượt sau.
 
 Hệ quả thực tế:
 
-- Viết hướng dẫn như **chỉ thị thường trực**, không phải bước làm một lần.
+- Nêu rõ hướng dẫn áp dụng cho task/lượt gọi nào; không biến workflow một lần thành chỉ thị thường trực.
 - Mỗi dòng là chi phí token lặp lại.
 - Grant `allowed-tools` thì ngược lại — hết hiệu lực khi user gửi tin nhắn kế tiếp.
 - Gọi lại skill với nội dung y hệt → chỉ thêm ghi chú "đã nạp", không nhân đôi. Nội dung khác đi (đối số đổi, lệnh inject ra output mới) → nối bản đầy đủ lần nữa.
@@ -202,7 +204,7 @@ category: business
 keywords: [idea, validation, startup]
 metadata:
   author: cpp
-  version: 3.0.0
+  version: "3.0.0"
 ```
 
 ```yaml
@@ -211,9 +213,9 @@ name: idea-validator
 description: ...
 metadata:
   category: business
-  keywords: [idea, validation, startup]
+  keywords: "idea, validation, startup"
   author: cpp
-  version: 3.0.0
+  version: "3.0.0"
 ```
 
 ### Khai lại giá trị mặc định

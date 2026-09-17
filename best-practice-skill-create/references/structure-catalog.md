@@ -14,17 +14,17 @@ Tổng hợp từ khảo sát skill thật: bộ Anthropic ship trong runtime (`
 
 ## Tầng A — spec công nhận
 
-Ba thư mục duy nhất được Agent Skills spec công nhận. Validator chỉ chấp nhận ba tên này mà không cảnh báo.
+Ba thư mục được spec khuyến nghị. Spec cho phép thêm file/thư mục khác; cảnh báo của linter chỉ phản ánh cấu hình hoặc quy ước riêng.
 
 | Thư mục | Cơ chế | Nội dung |
 |---|---|---|
 | `references/` | Claude **đọc** → tốn context | Schema, API docs, domain knowledge, policy, workflow chi tiết |
-| `scripts/` | Claude **chạy** → không tốn context | Code deterministic, tiện ích lặp lại |
-| `assets/` | Claude **copy** → không đọc | Template, font, logo, boilerplate |
+| `scripts/` | Claude **chạy** → thường không cần nạp mã nguồn | Code deterministic, tiện ích lặp lại |
+| `assets/` | Claude **copy/adapt** → đọc khi cần | Template, font, logo, boilerplate |
 
 ## Tầng B — quy ước phổ biến
 
-Không trong spec, nhưng dùng rộng rãi. Chỉ hoạt động khi SKILL.md trỏ tay tới.
+Được phép bởi spec và dùng rộng rãi; tài nguyên cần được tham chiếu hoặc sử dụng bởi workflow.
 
 | Thứ | Ai dùng | Ghi chú |
 |---|---|---|
@@ -32,7 +32,7 @@ Không trong spec, nhưng dùng rộng rãi. Chỉ hoạt động khi SKILL.md t
 | **File .md phẳng cạnh SKILL.md** | `pdf` (FORMS.md, REFERENCE.md), `pdf-reading` (REFERENCE.md), `paint` (reference.md) | Thay `references/` khi chỉ 1–2 file |
 | `reference/` số ít | `mcp-builder` | Cùng vai trò, tên khác — chạy được nhưng bị cảnh báo |
 | `requirements.txt` | `slack-gif-creator` (root), `mcp-builder` (trong scripts/) | Dependency Python |
-| `LICENSE.txt` | Gần như mọi skill Anthropic | **Validator flag là file cho người đọc** — chuẩn nội bộ bỏ nó khỏi skill |
+| `LICENSE.txt` | Gần như mọi skill Anthropic | Giữ trong gói khi cần giấy phép; không coi là lỗi cấu trúc |
 
 ## Tầng C — xuất hiện thực tế ở repo lớn
 
@@ -44,7 +44,7 @@ Không trong spec, nhưng dùng rộng rãi. Chỉ hoạt động khi SKILL.md t
 | `themes/` + file demo | `theme-factory` | Dữ liệu domain |
 | `canvas-fonts/` | `canvas-design` | Font |
 | `eval-viewer/` | `skill-creator` | Tooling phụ trợ (HTML + script) |
-| `evals/` | Khuyến nghị trong hướng dẫn evaluating-skills | Test case; validator cần `--allow-dirs=evals` |
+| `evals/` | Khuyến nghị trong hướng dẫn evaluating-skills | Test case; checker nội bộ chấp nhận thư mục này |
 | File rời đủ loại | `superpowers/writing-skills`: render-graphs.js, graphviz-conventions.dot, persuasion-principles.md | Không thư mục nào cả |
 | Prompt rời | `superpowers/writing-plans`: plan-document-reviewer-prompt.md | Prompt cho một bước cụ thể |
 
@@ -91,8 +91,8 @@ Ba tầng nạp context, và cái giá của mỗi tầng:
 | Tầng | Nội dung | Khi nào vào context | Ai trả giá |
 |---|---|---|---|
 | 1 | `name` + `description` | **Mọi phiên**, kể cả phiên không dùng skill | Tất cả mọi người |
-| 2 | Thân SKILL.md | Khi trigger, rồi ở lại đến hết phiên | Phiên đó |
-| 3 | `references/` `scripts/` `assets/` | Chỉ khi Claude chủ động mở | Lượt đó |
+| 2 | Thân SKILL.md | Khi trigger; việc giữ lại phụ thuộc runtime/compaction | Phiên đó |
+| 3 | `references/` `scripts/` `assets/` | Chỉ khi Claude chủ động mở | Các lượt còn giữ nội dung trong context |
 
 Số dòng SKILL.md thực tế của skill Anthropic đang chạy (đo `wc -l`):
 
