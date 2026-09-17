@@ -16,8 +16,10 @@
     {
       "id": 2,
       "prompt": "Review giúp skill này xem có gì sai không",
-      "expected_output": "Chạy check_skill.py, đối chiếu checklist review, chỉ ra lỗi cứng trước rồi tới cảnh báo",
-      "files": ["examples/minimal-skill.md"],
+      "expected_output": "Chạy check_skill.py trên thư mục evals/fixtures/review-skill, phát hiện Markdown link tới file thiếu là error, rồi đối chiếu checklist; không sửa fixture gốc.",
+      "files": [
+        "evals/fixtures/review-skill/SKILL.md"
+      ],
       "assertions": [
         "Chạy scripts/check_skill.py thay vì kiểm bằng mắt",
         "Phân biệt error và warning",
@@ -27,12 +29,22 @@
     {
       "id": 3,
       "prompt": "Skill của tôi có nên để LICENSE.txt và thư mục evals không?",
-      "expected_output": "LICENSE.txt bỏ khỏi skill; evals giữ được nhưng cần --allow-dirs khi validate",
+      "expected_output": "Giữ LICENSE.txt nếu cần giấy phép đi kèm. evals/ được spec cho phép và checker nội bộ chấp nhận mặc định.",
       "files": [],
       "assertions": [
-        "Nêu lý do LICENSE.txt bị flag: file cho người đọc, tốn context",
-        "Nêu cờ --allow-dirs=evals cho validator",
-        "Không trả lời chung chung mà dẫn tới rule S5 hoặc references/validation.md"
+        "Không yêu cầu xóa giấy phép chỉ để thỏa linter",
+        "Phân biệt quy ước linter với spec",
+        "Không khẳng định file hiện diện tự động bị nạp vào context"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Team có glossary nghiệp vụ dài chỉ dùng khi tra SRS. Có nên nhét toàn bộ vào CLAUDE.md không?",
+      "expected_output": "Đề xuất kiến thức nạp theo nhu cầu trong skill references; chỉ giữ quy tắc áp dụng thường xuyên ở CLAUDE.md.",
+      "files": [],
+      "assertions": [
+        "Không dùng fact/procedure làm tiêu chí duy nhất",
+        "Giải thích phạm vi và thời điểm nạp kiến thức"
       ]
     }
   ]

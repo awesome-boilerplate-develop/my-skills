@@ -7,7 +7,7 @@ commit-helper/
 └── SKILL.md
 ```
 
-```markdown
+````markdown
 ---
 name: commit-helper
 description: >
@@ -44,8 +44,8 @@ type(scope): tiêu đề ngắn
 
 - Không tự chạy `git commit`. Chỉ đưa message để người dùng dùng.
 - Không đoán scope khi diff đụng nhiều module ngang nhau — hỏi lại.
-```
+````
 
-Điểm đáng chú ý: `disable-model-invocation: true` vì đây là việc có side effect;
+Điểm đáng chú ý: `disable-model-invocation: true` để ví dụ này chỉ chạy khi user gọi; bản thân việc đề xuất message không có side effect;
 `!` inject diff thật vào context trước khi Claude đọc; `allowed-tools` khớp đúng
 lệnh trong body nên không bị hỏi quyền.

@@ -1,0 +1,126 @@
+{
+  "skill_name": "best-practice-skill-create",
+  "status": "not_run",
+  "cases": [
+    {
+      "id": 1,
+      "prompt": "Tạo skill viết test case từ yêu cầu nghiệp vụ",
+      "should_trigger": true,
+      "split": "development"
+    },
+    {
+      "id": 2,
+      "prompt": "Review SKILL.md và các references của skill này",
+      "should_trigger": true,
+      "split": "development"
+    },
+    {
+      "id": 3,
+      "prompt": "Sửa parser frontmatter của skill creator",
+      "should_trigger": true,
+      "split": "development"
+    },
+    {
+      "id": 4,
+      "prompt": "Nên đặt evals và assets của skill ở đâu?",
+      "should_trigger": true,
+      "split": "development"
+    },
+    {
+      "id": 5,
+      "prompt": "Quy trình này có đáng đóng thành skill không?",
+      "should_trigger": true,
+      "split": "held_out"
+    },
+    {
+      "id": 6,
+      "prompt": "Skill này có description trigger quá rộng không?",
+      "should_trigger": true,
+      "split": "development"
+    },
+    {
+      "id": 7,
+      "prompt": "Tạo skill điều phối dev và tester",
+      "should_trigger": true,
+      "split": "development"
+    },
+    {
+      "id": 8,
+      "prompt": "Kiểm tra skill tương thích Agent Skills spec",
+      "should_trigger": true,
+      "split": "development"
+    },
+    {
+      "id": 9,
+      "prompt": "Skill knowledge nên để glossary ở đâu?",
+      "should_trigger": true,
+      "split": "development"
+    },
+    {
+      "id": 10,
+      "prompt": "Viết eval cho skill review API",
+      "should_trigger": true,
+      "split": "held_out"
+    },
+    {
+      "id": 11,
+      "prompt": "Sửa YAML trong docker-compose.yml",
+      "should_trigger": false,
+      "split": "development"
+    },
+    {
+      "id": 12,
+      "prompt": "Review pull request API thanh toán",
+      "should_trigger": false,
+      "split": "development"
+    },
+    {
+      "id": 13,
+      "prompt": "Tạo test case đăng nhập cho ứng dụng",
+      "should_trigger": false,
+      "split": "development"
+    },
+    {
+      "id": 14,
+      "prompt": "Viết description sản phẩm cho website",
+      "should_trigger": false,
+      "split": "development"
+    },
+    {
+      "id": 15,
+      "prompt": "Tôi muốn cải thiện kỹ năng thuyết trình",
+      "should_trigger": false,
+      "split": "held_out"
+    },
+    {
+      "id": 16,
+      "prompt": "Sửa frontmatter bài viết Hugo",
+      "should_trigger": false,
+      "split": "development"
+    },
+    {
+      "id": 17,
+      "prompt": "Giải thích giấy phép MIT của thư viện này",
+      "should_trigger": false,
+      "split": "development"
+    },
+    {
+      "id": 18,
+      "prompt": "Tạo workflow GitHub Actions chạy pytest",
+      "should_trigger": false,
+      "split": "development"
+    },
+    {
+      "id": 19,
+      "prompt": "Viết script scaffold NestJS module",
+      "should_trigger": false,
+      "split": "development"
+    },
+    {
+      "id": 20,
+      "prompt": "Phân tích glossary nghiệp vụ này cho BA",
+      "should_trigger": false,
+      "split": "held_out"
+    }
+  ]
+}

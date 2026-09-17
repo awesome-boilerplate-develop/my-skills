@@ -1,6 +1,6 @@
 # Validate & chấm điểm skill
 
-Đọc file này khi review skill hoặc dựng CI. Nguồn: `agent-ecosystem/skill-validator` + docs Anthropic.
+Đọc file này khi review skill hoặc dựng CI. Phân biệt checker Python nội bộ với công cụ `agent-ecosystem/skill-validator` bên ngoài. Quy tắc normative theo [Agent Skills specification](https://agentskills.io/specification); ngưỡng token và các chỉ số nội dung là heuristic.
 
 ## Mục lục
 
@@ -19,7 +19,7 @@
 
 ## Ngưỡng token
 
-Đếm bằng encoding `o200k_base`.
+Bảng dưới là ngưỡng nội bộ tham khảo. Checker Python ước lượng bằng số ký tự / 4, không phải tokenizer; tiếng Việt có thể lệch đáng kể. Không dùng số ước lượng để kết luận chính xác chi phí context.
 
 | Phạm vi | Warning | Error |
 |---|---|---|
@@ -43,19 +43,27 @@ Bốn thứ này là error, không phải warning:
 
 ## Cảnh báo
 
-**Thư mục lạ** — ngoài `scripts/` `references/` `assets/`. Báo kèm số file bên trong và gợi ý thư mục chuẩn tương ứng.
+**Tên thư mục ngoài quy ước nội bộ** — checker chấp nhận `scripts/`, `references/`, `assets/`, `examples/`, `evals/`, `agents/`, `tests/`. Tên khác chỉ là cảnh báo để review; spec vẫn cho phép.
 
-**File dành cho người ở skill root** — `README.md`, `CHANGELOG.md`, `LICENSE`. `AGENTS.md` có cảnh báo riêng: nó là cấu hình agent cấp repo, không phải nội dung skill.
+**Tài liệu ở skill root** — checker gợi ý xem lại `README.md`, `CHANGELOG.md`; giữ giấy phép trong gói khi cần. `AGENTS.md` có cảnh báo riêng: nó là cấu hình agent cấp repo, không phải nội dung skill.
 
-**File mồ côi.** Validator dựng đồ thị reachability từ SKILL.md:
+**Phạm vi checker Python nội bộ**
 
-- Dùng **string containment**, không chỉ markdown link. Nhắc `references/guide.md` ở bất kỳ đâu trong text đều tính là đã tham chiếu — kể cả trong inline code hay code block.
-- **Bắc cầu**: SKILL.md → `references/guide.md` → `scripts/extract.py` thì script vẫn với tới được (báo là tham chiếu gián tiếp).
-- File ở root cạnh SKILL.md đóng vai trung gian. `FORMS.md` được SKILL.md nhắc, rồi `FORMS.md` nhắc script → script reachable.
-- Đường dẫn tương đối theo thư mục: `references/guide.md` nhắc `images/x.png` → resolve thành `references/images/x.png`.
-- **Python import chain** được resolve: file `.py` đã reachable chứa `from helpers.merge import x` → `helpers/merge.py` reachable. Import tương đối (`.module`, `..module`) xử lý đúng ngữ nghĩa package. `__init__.py` được loại khỏi check nhưng vẫn làm cầu nối cho re-export.
+- Parse YAML bằng PyYAML, từ chối key trùng và kiểm kiểu dữ liệu.
+- `--profile=portable` mặc định: kiểm 6 field spec; `--profile=claude-code` cho field mở rộng và thêm quy ước tên Claude.
+- Kiểm Markdown link tới file nội bộ (bỏ qua anchor khi kiểm file tồn tại). Inline path chỉ theo file đã tồn tại để tránh nhận nhầm tên minh họa là link gãy.
+- Theo reference Markdown bắc cầu; cảnh báo tài liệu chưa được trỏ tới và reference gián tiếp. Không đi vào ví dụ/template như tài liệu chỉ dẫn.
+- Không phân tích Python import, dependency asset, hoặc xác minh anchor. Kiểm các phần này bằng test script và review.
+- Chấp nhận `examples/`, `evals/`, `agents/`, `tests/`. `--allow-dirs` chỉ tắt cảnh báo tên thư mục, không bỏ check link/tài liệu mồ côi.
+- Kiểm fence backtick và tilde theo loại và độ dài. Dùng bốn backtick để bao ví dụ có ba backtick bên trong.
 
-**Tham chiếu thiếu đuôi mở rộng** — `scripts/check_fields` thay vì `scripts/check_fields.py`. Có cảnh báo riêng vì agent không định vị được file.
+```bash
+python3 -m pip install -r best-practice-skill-create/scripts/requirements.txt
+python3 best-practice-skill-create/scripts/check_skill.py best-practice-skill-create --strict
+python3 -m unittest discover -s best-practice-skill-create/tests -v
+```
+
+Các tính năng phân tích nội dung, tokenizer, Python import và LLM scoring bên dưới thuộc công cụ bên ngoài; checker Python không triển khai chúng.
 
 ## Keyword stuffing
 
@@ -116,9 +124,9 @@ Với bộ nội bộ có codebase một ngôn ngữ thì chỉ số này ít qu
 
 **File reference — 5 chiều:** Clarity, Token Efficiency, Novelty, **Instructional Value** (có ví dụ cụ thể áp dụng được ngay không), **Skill Relevance** (mọi mục có phục vụ mục đích của skill cha không).
 
-### Vì sao novelty là chiều quan trọng nhất
+### Cách dùng novelty
 
-Novelty được xác định là **yếu tố dự báo giá trị của skill**: skill cung cấp thông tin thực sự mới thì cải thiện output, còn skill nhắc lại kiến thức phổ thông **có thể làm giảm hiệu năng**.
+Novelty là tín hiệu để ưu tiên thông tin hữu ích, không chứng minh hiệu quả. Đo giá trị bằng baseline và kết quả task; kiến thức quen thuộc vẫn có thể giúp thực thi nhất quán.
 
 Khi novelty ≥3, validator gọi thêm một lượt để chỉ ra chi tiết nào là mới — API nội bộ, quy ước riêng, workflow chưa công bố — cho người review fact-check có trọng điểm.
 
@@ -128,16 +136,16 @@ Khi novelty ≥3, validator gọi thêm một lượt để chỉ ra chi tiết 
 
 **Cấu trúc**
 - [ ] SKILL.md tồn tại, frontmatter YAML hợp lệ
-- [ ] `name` khớp tên thư mục, chữ thường + gạch ngang, không chứa `anthropic`/`claude`
-- [ ] Không có thư mục rỗng, không có thư mục lạ
-- [ ] Không có README/CHANGELOG/LICENSE/AGENTS.md ở skill root
-- [ ] Mọi file với tới được từ SKILL.md, ghi đủ đuôi mở rộng
+- [ ] `name` khớp tên thư mục, đúng quy tắc dấu gạch ngang; áp thêm quy tắc tên của runtime đích
+- [ ] Không có thư mục rỗng hoặc tài nguyên không dùng; tên thư mục ngoài quy ước không phải lỗi spec
+- [ ] Tài liệu và giấy phép được giữ theo nhu cầu phân phối; không xóa chỉ để hết cảnh báo
+- [ ] Tài liệu được tham chiếu rõ; script/asset có caller hoặc mục đích cụ thể
 - [ ] Không có code fence chưa đóng
 - [ ] Không có internal link gãy
 
 **Frontmatter**
 - [ ] Đã chọn profile (Claude Code-only hay 6 field spec)
-- [ ] Field tự chế nằm trong `metadata`
+- [ ] Field tự chế nằm trong `metadata`; profile portable dùng giá trị string
 - [ ] Không khai field trùng mặc định
 - [ ] Description: văn xuôi trước, trigger sau; không keyword stuffing
 - [ ] Description + when_to_use dưới 1.536 ký tự, use case chính lên đầu
@@ -256,8 +264,6 @@ Repo cũng có `examples/review-skill` — một Agent Skill hướng dẫn agen
 
 ## Ba chỗ chuẩn nội bộ lệch với validator
 
-1. **`LICENSE.txt`** — Anthropic ship nó trong hầu hết skill mẫu, nhưng validator flag là file cho người đọc. Chuẩn nội bộ: bỏ khỏi skill, đặt ở cấp plugin. Nếu buộc phải giữ thì chấp nhận warning.
-
-2. **`evals/` và `agents/`** — không thuộc 3 thư mục chuẩn nên bị cảnh báo. Chạy với `--allow-dirs=evals,agents`. Lưu ý cờ này chỉ tắt cảnh báo, không đổi cách nền tảng khác nạp file; nếu skill sẽ dùng đa nền tảng thì cân nhắc chuyển nội dung vào `references/`.
-
-3. **Ngưỡng mục lục** — docs Anthropic nói file trên 100 dòng cần mục lục; skill-creator nói trên 300 dòng. Chuẩn nội bộ lấy **100** cho an toàn.
+1. **Giấy phép:** giữ `LICENSE.txt` khi cần phân phối; spec cho phép. Không sửa giấy phép để thỏa cảnh báo của linter.
+2. **Thư mục tùy chọn:** spec cho phép thư mục khác; `--allow-dirs` là cấu hình linter, không quyết định khả năng nạp của runtime.
+3. **Mục lục:** team lấy 100 dòng làm ngưỡng gợi ý; không phải điều kiện hợp lệ của spec.

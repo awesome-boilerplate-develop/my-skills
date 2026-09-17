@@ -8,7 +8,7 @@ description: >
   Triggers: "tạo skill", "viết skill mới", "review skill", "cấu trúc skill", "frontmatter skill".
 metadata:
   status: draft
-  version: 0.4.0
+  version: 0.4.1
   scope: internal
 ---
 
@@ -22,27 +22,31 @@ Ngưỡng số, lỗi cứng và quy trình chấm điểm nằm ở `references
 
 | Nhu cầu | Dùng |
 |---|---|
-| Một việc, một agent, một lần | Subagent (Task tool) |
+| Việc đơn giản, làm trực tiếp được | Agent hiện tại |
+| Cần tách nhiệm vụ/context hoặc chạy độc lập | Subagent |
 | Quy trình lặp lại, Claude tự chọn bước | **Skill** |
 | Nhiều agent theo topology cố định, chạy lại được | Workflow (`workflows/*.js`, cấp plugin) |
-| Sự thật luôn đúng về dự án | CLAUDE.md |
+| Quy tắc ngắn, áp dụng xuyên suốt dự án | CLAUDE.md / AGENTS.md |
+| Kiến thức chuyên biệt, chỉ cần ở một số task | Skill + references |
 
-Nếu nội dung là *fact* chứ không phải *procedure*, nó thuộc CLAUDE.md.
+Phân biệt theo phạm vi và thời điểm cần nạp; cả kiến thức lẫn quy trình đều có thể thuộc skill.
 
 Đã chắc là skill thì xác định **type** trước khi chọn cấu trúc — artifact, workflow, router, knowledge, taste, domain-variant hay automation. Mỗi type có cấu trúc và cách test khác nhau; xem `references/skill-types.md`.
 
-Kiểm tra tiếp: nội dung này Claude đã biết sẵn chưa? Skill chỉ nhắc lại kiến thức phổ thông không những vô ích mà còn **làm giảm chất lượng output**. Nếu không nêu được điều gì mới — API nội bộ, quy ước riêng, workflow chưa công bố — thì đừng viết skill.
+Kiểm tra tiếp: nội dung này Claude đã biết sẵn chưa? Ưu tiên API nội bộ, quy ước riêng và workflow cụ thể. Kiến thức phổ thông vẫn hữu ích nếu giúp thực thi nhất quán; đo bằng eval có/không có skill thay vì loại chỉ vì không mới.
 
 ## Cấu trúc thư mục
 
-★ = spec công nhận · ○ = tùy chọn, chỉ hoạt động khi SKILL.md trỏ tay tới
+★ = file bắt buộc hoặc thư mục được spec khuyến nghị · ○ = tài nguyên tùy chọn
+
+Phân loại rule: F2/F4 và giới hạn field portable theo spec; tính năng có tiền tố Claude thuộc runtime Claude Code. Cách đặt thư mục, văn phong và ngưỡng review là quy ước nội bộ/heuristic.
 
 ```
 <skill-name>/
 ├── SKILL.md                       ★ BẮT BUỘC
 ├── references/                    ★ Claude ĐỌC → tốn context
 ├── REFERENCE.md                   ○ biến thể khi chỉ 1–2 file
-├── scripts/                       ★ Claude CHẠY → không tốn context
+├── scripts/                       ★ Claude CHẠY → thường không cần nạp mã nguồn
 │   └── requirements.txt           ○
 ├── <package>/                     ○ khi code lớn: __init__.py + modules
 ├── assets/                        ★ Claude COPY vào output
@@ -69,17 +73,17 @@ Kiểm tra tiếp: nội dung này Claude đã biết sẵn chưa? Skill chỉ n
 
 Dưới 3 file tham chiếu: đặt `REFERENCE.md` ngay cạnh `SKILL.md`. Từ 3 trở lên: gom vào `references/`.
 
-### S4 — Bám 3 tên chuẩn
+### S4 — Ưu tiên 3 tên thư mục theo quy ước
 
-`references/` `scripts/` `assets/` là ba tên duy nhất spec công nhận. Tên khác vẫn chạy trong Claude Code nhưng bị validator cảnh báo và có thể không được nạp trên nền tảng khác.
+Spec khuyến nghị `references/`, `scripts/`, `assets/` và cho phép file/thư mục khác. Ưu tiên ba tên này theo quy ước team; `examples/`, `evals/`, `agents/` cũng hợp lệ. Cảnh báo từ một linter không chứng minh giới hạn của nền tảng.
 
-### S5 — Không để file dành cho người ở skill root
+### S5 — Chỉ giữ tài liệu phục vụ phân phối và sử dụng
 
-`README.md`, `CHANGELOG.md`, `LICENSE`, `AGENTS.md` là cho người đọc, không cho agent — chúng có thể bị nạp vào context vô ích. Đặt ở cấp plugin hoặc repo, không trong thư mục skill.
+Ưu tiên đặt README/CHANGELOG ở cấp repo khi chỉ phục vụ người dùng. Giữ `LICENSE`/`LICENSE.txt` trong gói khi cần phân phối giấy phép; spec cho phép `license` trỏ tới file này. Việc file tồn tại không tự làm nội dung của nó được nạp vào context.
 
-### S6 — Mọi file phải với tới được từ SKILL.md
+### S6 — Tài nguyên cần có nơi sử dụng rõ ràng
 
-File trong `scripts/` `references/` `assets/` chỉ được nạp khi agent gặp một tham chiếu tới nó. File không được nhắc ở bất kỳ đâu là file chết.
+File trong `scripts/` `references/` `assets/` chỉ được nạp khi agent gặp một tham chiếu tới nó. Tài liệu cần có đường dẫn truy cập rõ; module được import hoặc asset được script sử dụng không cần liệt kê riêng trong SKILL.md.
 
 Quan hệ tham chiếu có tính bắc cầu: SKILL.md → `references/<guide>.md` → `scripts/extract.py` thì script vẫn với tới được. Nhưng **luôn ghi đủ đuôi mở rộng** — `scripts/check.py`, không phải `scripts/check`.
 
@@ -104,7 +108,7 @@ keywords: [idea, validation]
 # ĐÚNG
 metadata:
   category: business
-  keywords: [idea, validation]
+  keywords: "idea, validation"
 ```
 
 ### F3 — Không khai field trùng giá trị mặc định
@@ -113,9 +117,9 @@ metadata:
 
 ### F4 — Quy tắc đặt tên
 
-- Chữ thường, số, gạch ngang. Tối đa 64 ký tự.
+- Chữ thường, số, gạch ngang. Tối đa 64 ký tự; không bắt đầu/kết thúc bằng `-`, không có `--`.
 - **Phải khớp tên thư mục.**
-- Cấm từ khóa `anthropic` và `claude`.
+- Profile Claude Code áp dụng thêm quy tắc tên riêng của Claude; checker nội bộ chặn `anthropic` và `claude` ở profile này.
 - Ưu tiên dạng gerund: `processing-pdfs`, `analyzing-spreadsheets`. Chấp nhận cụm danh từ: `pdf-processing`.
 - Tránh tên mơ hồ: `helper`, `utils`, `tools`, `data`.
 
@@ -160,21 +164,21 @@ Bạn nên đọc file cấu hình.      ← sai
 
 ### B2 — Giữ body mỏng
 
-Dưới 500 dòng và dưới 5.000 token. Nội dung skill **nằm lại trong context suốt session** — mỗi dòng là chi phí token lặp lại. Viết như chỉ thị thường trực, không phải bước làm một lần.
+Dưới 500 dòng và dưới 5.000 token. Nội dung được nạp vào hội thoại khi gọi; việc giữ lại qua compaction phụ thuộc runtime. Viết rõ phạm vi và thời điểm áp dụng, tránh làm hướng dẫn cho một task trở thành ràng buộc cho mọi task sau.
 
 ### B3 — Chỉ viết cái Claude chưa biết
 
 Với mỗi đoạn, tự hỏi: Claude có thực sự cần giải thích này không? Đoạn này có xứng với chi phí token không?
 
-```markdown
-## Trích text từ PDF                    ← ~50 token
+````markdown
+## Trích text từ PDF                    ← ví dụ
 Dùng pdfplumber:
 ```python
 import pdfplumber
 with pdfplumber.open("f.pdf") as pdf:
     text = pdf.pages[0].extract_text()
 ```
-```
+````
 
 Bản dài dòng giải thích PDF là gì, thư viện là gì, vì sao chọn pdfplumber — tốn gấp ba, giá trị bằng không.
 
@@ -195,9 +199,9 @@ SKILL.md → advanced.md, reference.md   ← ĐÚNG
 
 Để Claude thấy toàn bộ phạm vi ngay cả khi chỉ đọc một phần. File trên ~10k token thì ghi thêm mẫu grep trong SKILL.md.
 
-### B7 — Luôn có mục "Tài liệu liên quan"
+### B7 — Liệt kê tài nguyên phụ khi có
 
-Không có mục này, Claude không biết `references/` tồn tại.
+Có thể đặt tham chiếu ngay ở bước sử dụng hoặc gom vào mục này. Skill một file không cần mục rỗng.
 
 ```markdown
 ## Tài liệu liên quan
@@ -371,16 +375,19 @@ Thêm `references/ scripts/ assets/ examples/` **khi cần**, không trước.
 
 ### Script — chạy, không đọc
 
-Cả hai chỉ dùng thư viện chuẩn Python 3, không cần cài gì.
+Dùng Python 3.10+. Scaffold chỉ cần thư viện chuẩn; checker cần PyYAML.
+Cài dependency bằng `python3 -m pip install -r "${CLAUDE_SKILL_DIR}/scripts/requirements.txt"`.
+Chạy test hồi quy khi sửa script: `python3 -m unittest discover -s "${CLAUDE_SKILL_DIR}/tests" -v`.
 
 - `scripts/scaffold_skill.py` — dựng khung skill mới.
   **Chạy**: `python3 ${CLAUDE_SKILL_DIR}/scripts/scaffold_skill.py <tên> [--with=references,scripts]`
   Mặc định chỉ tạo SKILL.md, đúng theo S1.
 - `scripts/check_skill.py` — kiểm tra skill theo chuẩn này.
-  **Chạy**: `python3 ${CLAUDE_SKILL_DIR}/scripts/check_skill.py <đường-dẫn> [--strict] [--allow-dirs=evals,agents]`
+  **Chạy**: `python3 ${CLAUDE_SKILL_DIR}/scripts/check_skill.py <đường-dẫn> [--strict] [--profile=portable|claude-code] [--allow-dirs=tên-thư-mục]`
   Kiểm: frontmatter, keyword stuffing, thư mục lạ, file cho người đọc, code fence,
-  internal link, file mồ côi bắc cầu, đuôi mở rộng thiếu, ngưỡng token, mục lục,
-  độ sâu reference. Exit 0 sạch / 1 error / 2 warning / 3 lỗi dùng.
+  Markdown link nội bộ, tài liệu chưa được tham chiếu, ngưỡng token ước lượng,
+  mục lục, độ sâu reference. Inline path chỉ dùng để theo file đã tồn tại;
+  muốn phát hiện file đích bị thiếu thì dùng Markdown link. Không phân tích Python import. Exit 0 sạch / 1 error / 2 warning / 3 lỗi dùng.
 
 Sau khi sửa skill, chạy `check_skill.py` rồi sửa tiếp đến khi sạch — đây là vòng
 phản hồi bắt buộc theo B11.
@@ -409,4 +416,8 @@ phản hồi bắt buộc theo B11.
 
 ### Test case của chính skill này
 
-- `evals/evals.json` — ba eval, dùng khi sửa chuẩn này và cần kiểm tra không vỡ
+- `evals/evals.json` — bốn eval, dùng khi sửa chuẩn này và cần kiểm tra không vỡ
+- `evals/trigger-cases.json` — 20 prompt nên/không nên trigger; giữ held-out khỏi vòng sửa description. Chưa có kết quả chạy model.
+
+Nguồn chuẩn: [Agent Skills specification](https://agentskills.io/specification) và [Claude Code skills](https://code.claude.com/docs/en/skills).
+Các ngưỡng và quy ước team không phải yêu cầu chung của spec.

@@ -12,6 +12,7 @@ Ví dụ:
     python3 scripts/scaffold_skill.py commit-helper
 """
 
+import argparse
 import re
 import sys
 from pathlib import Path
@@ -19,7 +20,7 @@ from pathlib import Path
 VALID_DIRS = {"references", "scripts", "assets", "examples", "evals", "agents"}
 
 SKILL_TEMPLATE = """---
-name: {name}
+name: "{name}"
 description: >
   <Một câu nói skill làm gì và khi nào dùng — văn xuôi thật, không phải danh sách keyword.>
   Triggers: "<cụm người dùng thật sự gõ>", "<cụm khác>".
@@ -80,30 +81,24 @@ REFERENCE_TEMPLATE = """# <Chủ đề>
 
 
 def slug_ok(name: str) -> bool:
-    return bool(re.fullmatch(r"[a-z0-9-]{1,64}", name))
+    return len(name) <= 64 and bool(re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name))
 
 
 def main(argv: list[str]) -> int:
-    if not argv or argv[0].startswith("--"):
-        print(__doc__)
-        return 3
-
-    name = argv[0]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("name")
+    parser.add_argument("--dir", default=".")
+    parser.add_argument("--with", dest="resources", default="")
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit as exc:
+        return 0 if exc.code == 0 else 3
+    name = args.name
     if not slug_ok(name):
         print(f"Tên không hợp lệ: {name!r} — chỉ chữ thường, số, gạch ngang, tối đa 64 ký tự.")
         return 3
-    for reserved in ("anthropic", "claude"):
-        if reserved in name.lower():
-            print(f"Tên chứa từ khóa bị cấm: {reserved!r}")
-            return 3
-
-    base = Path(".")
-    wanted: set[str] = set()
-    for arg in argv[1:]:
-        if arg.startswith("--dir="):
-            base = Path(arg.split("=", 1)[1])
-        elif arg.startswith("--with="):
-            wanted |= {d.strip() for d in arg.split("=", 1)[1].split(",") if d.strip()}
+    base = Path(args.dir)
+    wanted = {d.strip() for d in args.resources.split(",") if d.strip()}
 
     unknown = wanted - VALID_DIRS
     if unknown:
@@ -203,4 +198,8 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except (OSError, UnicodeError) as exc:
+        print(f"Không tạo được skill: {exc}", file=sys.stderr)
+        sys.exit(3)
