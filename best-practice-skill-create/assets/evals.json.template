@@ -1,0 +1,15 @@
+{
+  "skill_name": "<skill-name>",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "<câu người dùng thật sự sẽ gõ>",
+      "expected_output": "<mô tả kết quả mong đợi>",
+      "files": [],
+      "assertions": [
+        "<điều kiểm chứng được khách quan>",
+        "<điều kiểm chứng được khác>"
+      ]
+    }
+  ]
+}

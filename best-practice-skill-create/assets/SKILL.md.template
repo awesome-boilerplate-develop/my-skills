@@ -1,0 +1,30 @@
+---
+name: <skill-name>
+description: >
+  <Một câu nói skill làm gì và khi nào dùng — văn xuôi thật, không phải danh sách keyword.>
+  Triggers: "<cụm người dùng thật sự gõ>", "<cụm khác>".
+---
+
+# <Tên skill>
+
+## Mục đích
+
+<2–3 câu. Chỉ viết điều Claude chưa biết.>
+
+## Quy trình
+
+1. <Thể mệnh lệnh.>
+2. <...>
+
+## Định dạng output
+
+<Cấu trúc, nơi lưu, độ dài.>
+
+## Giới hạn
+
+- <Điều tuyệt đối không làm.>
+
+## Tài liệu liên quan
+
+- `references/<topic>.md` — <nội dung> · tra bằng `grep -n "<pattern>"`
+- `scripts/<action>.py` — <chức năng> · **chạy**: `python3 ${CLAUDE_SKILL_DIR}/scripts/<action>.py <args>`

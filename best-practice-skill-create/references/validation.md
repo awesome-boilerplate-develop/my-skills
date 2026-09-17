@@ -1,0 +1,263 @@
+# Validate & chấm điểm skill
+
+Đọc file này khi review skill hoặc dựng CI. Nguồn: `agent-ecosystem/skill-validator` + docs Anthropic.
+
+## Mục lục
+
+- [Ngưỡng token](#ngưỡng-token)
+- [Lỗi cứng](#lỗi-cứng)
+- [Cảnh báo](#cảnh-báo)
+- [Keyword stuffing](#keyword-stuffing)
+- [Chỉ số chất lượng nội dung](#chỉ-số-chất-lượng-nội-dung)
+- [Contamination](#contamination)
+- [Chấm điểm LLM-as-judge](#chấm-điểm-llm-as-judge)
+- [Checklist review](#checklist-review)
+- [Chạy validator](#chạy-validator)
+- [Tích hợp CI](#tích-hợp-ci)
+- [Anti-pattern hay gặp khi review](#anti-pattern-hay-gặp-khi-review)
+- [Ba chỗ chuẩn nội bộ lệch với validator](#ba-chỗ-chuẩn-nội-bộ-lệch-với-validator)
+
+## Ngưỡng token
+
+Đếm bằng encoding `o200k_base`.
+
+| Phạm vi | Warning | Error |
+|---|---|---|
+| SKILL.md body | 5.000 token **hoặc** 500 dòng | — |
+| Mỗi file trong `references/` | 10.000 | 25.000 |
+| Tổng `references/` | 25.000 | 50.000 |
+| File ngoài cấu trúc chuẩn | 25.000 | 100.000 |
+
+File text trong `assets/` (`.md .tex .py .yaml .yml .tsx .ts .jsx .sty .mplstyle .ipynb`) được đếm riêng vì LLM có thể nạp chúng vào context. Ảnh và binary bỏ qua.
+
+**Check tổng thể**: nếu nội dung ngoài chuẩn vượt **10 lần** nội dung chuẩn và trên 25.000 token, đây không phải skill — đó là một repo có file SKILL.md trong đó.
+
+## Lỗi cứng
+
+Bốn thứ này là error, không phải warning:
+
+1. **Code fence chưa đóng** (` ``` ` hoặc `~~~`) trong SKILL.md hoặc file reference. Agent sẽ hiểu nhầm mọi thứ sau đó là code — hỏng hoàn toàn.
+2. **Internal link gãy**. Link tương đối trong SKILL.md được resolve theo thư mục skill và kiểm tra tồn tại. Đây là vấn đề cấu trúc, không phải vấn đề mạng.
+3. **Thiếu `name` hoặc `description`**, hoặc `name` sai định dạng (chữ thường + số + gạch ngang, 1–64 ký tự).
+4. **`name` không khớp tên thư mục.**
+
+## Cảnh báo
+
+**Thư mục lạ** — ngoài `scripts/` `references/` `assets/`. Báo kèm số file bên trong và gợi ý thư mục chuẩn tương ứng.
+
+**File dành cho người ở skill root** — `README.md`, `CHANGELOG.md`, `LICENSE`. `AGENTS.md` có cảnh báo riêng: nó là cấu hình agent cấp repo, không phải nội dung skill.
+
+**File mồ côi.** Validator dựng đồ thị reachability từ SKILL.md:
+
+- Dùng **string containment**, không chỉ markdown link. Nhắc `references/guide.md` ở bất kỳ đâu trong text đều tính là đã tham chiếu — kể cả trong inline code hay code block.
+- **Bắc cầu**: SKILL.md → `references/guide.md` → `scripts/extract.py` thì script vẫn với tới được (báo là tham chiếu gián tiếp).
+- File ở root cạnh SKILL.md đóng vai trung gian. `FORMS.md` được SKILL.md nhắc, rồi `FORMS.md` nhắc script → script reachable.
+- Đường dẫn tương đối theo thư mục: `references/guide.md` nhắc `images/x.png` → resolve thành `references/images/x.png`.
+- **Python import chain** được resolve: file `.py` đã reachable chứa `from helpers.merge import x` → `helpers/merge.py` reachable. Import tương đối (`.module`, `..module`) xử lý đúng ngữ nghĩa package. `__init__.py` được loại khỏi check nhưng vẫn làm cầu nối cho re-export.
+
+**Tham chiếu thiếu đuôi mở rộng** — `scripts/check_fields` thay vì `scripts/check_fields.py`. Có cảnh báo riêng vì agent không định vị được file.
+
+## Keyword stuffing
+
+Hai luật:
+
+1. Description có **≥5 chuỗi trích dẫn** bị flag khi văn xuôi xung quanh có **ít từ hơn số chuỗi**.
+2. Description có **≥8 đoạn ngắn ngăn bằng dấu phẩy** (sau khi loại chuỗi trích dẫn) bị coi là danh sách keyword.
+
+Pattern được chấp nhận: một câu văn xuôi thật, **rồi** mới tới danh sách trigger bổ sung dạng `Triggers: "a", "b"`.
+
+Đây là chỗ căng với lời khuyên "viết description pushy" của skill-creator. Giải pháp là đặt trigger **sau** văn xuôi, không phải bỏ trigger.
+
+## Chỉ số chất lượng nội dung
+
+Tính cho SKILL.md và các file markdown trong `references/`:
+
+| Chỉ số | Ý nghĩa |
+|---|---|
+| Word count | Tổng số từ |
+| Code block ratio | Tỉ lệ block code |
+| Imperative ratio | Tỉ lệ câu bắt đầu bằng động từ mệnh lệnh (use, run, create, configure…) |
+| Strong markers | Đếm từ chỉ thị: must, always, never, required, ensure |
+| Weak markers | Đếm từ khuyến nghị: may, consider, could, optional, suggested |
+| **Instruction specificity** | `strong / (strong + weak)` — mức chỉ thị so với khuyến nghị |
+| **Information density** | `code_block_ratio × 0.5 + imperative_ratio × 0.5` |
+| Section count | Header H2 trở lên |
+
+Không có ngưỡng pass/fail cho nhóm này — chúng là tín hiệu. Instruction specificity thấp nghĩa là skill toàn "có thể", "nên cân nhắc" — Claude sẽ không coi là ràng buộc.
+
+Nhưng **đừng tối đa hóa nó**. Tài liệu skill-creator nói ngược lại: thấy mình viết ALWAYS/NEVER dày đặc là cờ vàng, vì Claude tổng quát hóa từ lý do tốt hơn từ mệnh lệnh. Hai nguồn hòa được: cứng ở *hợp đồng* (format output, thứ tự thao tác mong manh), mềm ở *cách làm*. Xem rule B14.
+
+## Contamination
+
+Phát hiện skill có ví dụ code ở nhiều ngôn ngữ, gây sinh code sai ngữ cảnh.
+
+Công thức 3 yếu tố, cap ở 1.0:
+
+- Multi-interface tool (0.3): công cụ có nhiều binding ngôn ngữ — MongoDB, AWS, Docker, Kubernetes, Redis
+- Language mismatch (0.4): code block thuộc các nhóm ngôn ngữ ứng dụng khác nhau. Nhóm phụ trợ (shell, config, query, markup) được loại vì không gây nhầm cú pháp
+- Scope breadth (0.3): số nhóm công nghệ khác nhau được nhắc
+
+Mức: high ≥0.5 · medium ≥0.2 · low <0.2.
+
+Với bộ nội bộ có codebase một ngôn ngữ thì chỉ số này ít quan trọng. Nó đáng chú ý nếu skill nói về công cụ đa binding.
+
+## Chấm điểm LLM-as-judge
+
+**SKILL.md — 6 chiều, mỗi chiều 1–5:**
+
+| Chiều | Câu hỏi |
+|---|---|
+| Clarity | Hướng dẫn có rõ và không mơ hồ không? |
+| Actionability | Agent có làm theo từng bước được không? |
+| Token Efficiency | Mỗi token có xứng chỗ trong context không? |
+| Scope Discipline | Có bám đúng mục đích đã nêu không? |
+| Directive Precision | Dùng chỉ thị chính xác (must/always/never) hay gợi ý mơ hồ? |
+| **Novelty** | Bao nhiêu phần vượt ra ngoài cái LLM đã biết từ training? |
+
+**File reference — 5 chiều:** Clarity, Token Efficiency, Novelty, **Instructional Value** (có ví dụ cụ thể áp dụng được ngay không), **Skill Relevance** (mọi mục có phục vụ mục đích của skill cha không).
+
+### Vì sao novelty là chiều quan trọng nhất
+
+Novelty được xác định là **yếu tố dự báo giá trị của skill**: skill cung cấp thông tin thực sự mới thì cải thiện output, còn skill nhắc lại kiến thức phổ thông **có thể làm giảm hiệu năng**.
+
+Khi novelty ≥3, validator gọi thêm một lượt để chỉ ra chi tiết nào là mới — API nội bộ, quy ước riêng, workflow chưa công bố — cho người review fact-check có trọng điểm.
+
+Áp dụng cho bộ plugin: skill chứa map tài liệu nội bộ, glossary riêng, quy ước nghiệp vụ của hệ thống → novelty cao, giữ. Skill kiểu "cách viết unit test tốt" → novelty thấp, cân nhắc bỏ.
+
+## Checklist review
+
+**Cấu trúc**
+- [ ] SKILL.md tồn tại, frontmatter YAML hợp lệ
+- [ ] `name` khớp tên thư mục, chữ thường + gạch ngang, không chứa `anthropic`/`claude`
+- [ ] Không có thư mục rỗng, không có thư mục lạ
+- [ ] Không có README/CHANGELOG/LICENSE/AGENTS.md ở skill root
+- [ ] Mọi file với tới được từ SKILL.md, ghi đủ đuôi mở rộng
+- [ ] Không có code fence chưa đóng
+- [ ] Không có internal link gãy
+
+**Frontmatter**
+- [ ] Đã chọn profile (Claude Code-only hay 6 field spec)
+- [ ] Field tự chế nằm trong `metadata`
+- [ ] Không khai field trùng mặc định
+- [ ] Description: văn xuôi trước, trigger sau; không keyword stuffing
+- [ ] Description + when_to_use dưới 1.536 ký tự, use case chính lên đầu
+
+**Body**
+- [ ] Dưới 500 dòng và 5.000 token
+- [ ] Thể mệnh lệnh, không ngôi thứ hai
+- [ ] Reference chỉ một tầng từ SKILL.md
+- [ ] File reference trên 100 dòng có mục lục
+- [ ] Không trùng lặp giữa SKILL.md và references
+- [ ] Không có thông tin gắn mốc thời gian ngoài mục "old patterns"
+- [ ] Thuật ngữ nhất quán
+- [ ] Nêu rõ script nào để **chạy**, file nào để **đọc**
+
+**Script**
+- [ ] Tự xử lý lỗi, không đẩy cho Claude
+- [ ] Không có hằng số bí ẩn
+- [ ] Đường dẫn dùng gạch chéo xuôi
+- [ ] Dependency được liệt kê và có sẵn trong môi trường đích
+- [ ] Tool MCP gọi đủ tên `Server:tool`
+
+**Test**
+- [ ] Có ít nhất 3 eval
+- [ ] Đã đo baseline không có skill
+- [ ] Gõ câu KHÔNG nên trigger → skill không load
+- [ ] Đã test trên các model sẽ dùng
+- [ ] Chạy `/doctor` xem chi phí listing
+
+## Chạy validator
+
+Cài (một trong hai):
+
+```bash
+brew tap agent-ecosystem/tap && brew install skill-validator
+# hoặc
+go install github.com/agent-ecosystem/skill-validator/cmd/skill-validator@latest
+```
+
+Lệnh theo giai đoạn phát triển:
+
+| Giai đoạn | Lệnh | Trả lời câu hỏi |
+|---|---|---|
+| Dựng khung | `validate structure` | Có đúng spec và agent dùng được không? |
+| Viết nội dung | `analyze content` | Chất lượng chỉ dẫn thế nào? |
+| Thêm ví dụ | `analyze contamination` | Có gây nhiễu chéo ngôn ngữ không? |
+| Review | `validate links` | Link ngoài còn sống không? |
+| Chấm điểm | `score evaluate` | LLM đánh giá skill này ra sao? |
+| Trước khi publish | `check` | Chạy tất cả trừ chấm điểm LLM |
+
+Exit code: `0` sạch · `1` có error · `2` có warning · `3` lỗi CLI.
+
+Cờ hay dùng cho bộ nội bộ:
+
+```bash
+skill-validator check --allow-dirs=evals,agents --strict skills/
+```
+
+`--strict` biến warning thành error. `--allow-dirs` chấp nhận thư mục ngoài chuẩn. `--allow-flat-layouts` cho phép để file ngay ở skill root. `--skip-orphans` tắt cảnh báo file mồ côi.
+
+Nếu đường dẫn không chứa SKILL.md nhưng thư mục con có, validator tự phát hiện và kiểm tra từng skill riêng.
+
+Chấm điểm LLM không cần API key nếu đã đăng nhập Claude CLI:
+
+```bash
+skill-validator score evaluate --provider claude-cli skills/srs-lookup/
+```
+
+Kết quả cache trong `.score_cache/` bên trong thư mục skill. Xem lại không tốn API: `score report --compare`.
+
+## Tích hợp CI
+
+```yaml
+name: Validate Skills
+on:
+  pull_request:
+    paths: ["skills/**"]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install agent-ecosystem/tap/skill-validator
+      - run: |
+          skill-validator check --strict --emit-annotations skills/
+          skill-validator check --strict -o markdown skills/ >> "$GITHUB_STEP_SUMMARY"
+```
+
+`--emit-annotations` gắn error/warning vào đúng dòng trong PR diff. Tách skill đã publish (dùng `--strict`) khỏi skill nháp (không `--strict`, warning không chặn merge).
+
+Có sẵn pre-commit hook:
+
+```yaml
+repos:
+  - repo: https://github.com/agent-ecosystem/skill-validator
+    rev: v0.5.0
+    hooks:
+      - id: skill-validator-claude
+```
+
+Repo cũng có `examples/review-skill` — một Agent Skill hướng dẫn agent chạy trọn quy trình review. Copy vào thư mục skill để dev tự review trước khi mở PR.
+
+## Anti-pattern hay gặp khi review
+
+| Anti-pattern | Vì sao hỏng | Thay bằng |
+|---|---|---|
+| Description chỉ mô tả chức năng | Không trigger được | Thêm ngữ cảnh, cụm từ, đuôi file, phản-trigger |
+| Hướng dẫn "khi nào dùng" nằm trong body | Body nạp sau khi trigger — quá muộn | Dời hết lên description |
+| Nhét toàn bộ tài liệu vào SKILL.md | Đốt context mọi lần trigger | Đẩy xuống `references/`, kèm điều kiện đọc |
+| MUST/NEVER dày đặc | Claude làm máy móc, không thích ứng | Giải thích lý do; cứng chỉ ở hợp đồng |
+| Skill mô tả từng bước một việc xác định | Chậm, dễ sai, Claude tự viết lại helper | Bundle script |
+| Sửa skill vừa khít 3 test case | Không tổng quát | Sửa ở mức nguyên tắc |
+| Ép assertion lên skill chủ quan | Chấm sai trọng tâm | Đánh giá định tính |
+| Bỏ baseline | Không biết skill có ích hay chỉ tốn context | Luôn chạy cặp có/không |
+| Trigger quá rộng | Nhảy vào cả câu hỏi thường | Thêm phản-trigger, hoặc `disable-model-invocation` |
+| Test bằng prompt quá nhẹ | Claude tự làm được, không tra skill | Prompt nặng, giống người dùng thật |
+
+## Ba chỗ chuẩn nội bộ lệch với validator
+
+1. **`LICENSE.txt`** — Anthropic ship nó trong hầu hết skill mẫu, nhưng validator flag là file cho người đọc. Chuẩn nội bộ: bỏ khỏi skill, đặt ở cấp plugin. Nếu buộc phải giữ thì chấp nhận warning.
+
+2. **`evals/` và `agents/`** — không thuộc 3 thư mục chuẩn nên bị cảnh báo. Chạy với `--allow-dirs=evals,agents`. Lưu ý cờ này chỉ tắt cảnh báo, không đổi cách nền tảng khác nạp file; nếu skill sẽ dùng đa nền tảng thì cân nhắc chuyển nội dung vào `references/`.
+
+3. **Ngưỡng mục lục** — docs Anthropic nói file trên 100 dòng cần mục lục; skill-creator nói trên 300 dòng. Chuẩn nội bộ lấy **100** cho an toàn.
