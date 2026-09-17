@@ -1,5 +1,5 @@
 ---
-name: mcare-auto-test
+name: auto-test-domain
 description: Use when a tester asks Copilot to run test scenarios or testcases written in natural language (English or Vietnamese) against the MCare21 DEV or SIT environment — e.g. "run the scenarios in this file", "run these test cases on SIT", "chạy kịch bản", "chạy test case trên DEV", "auto test", "mở màn SIT check...", "vào DEV bấm thử...", "test giao diện trên SIT/DEV". Drives the browser through the Playwright MCP server (tool calls, not scripts); assumes the MCP server is NOT configured yet and walks through setup from scratch. Also explains how a non-technical tester should write the scenario file. Only DEV and SIT — refuses any other environment.
 ---
 

@@ -77,8 +77,8 @@ language:
 In Copilot Chat:
 
 ```text
-#mcare-auto-test run the scenarios in <path-to-file>.md
-#mcare-auto-test chạy kịch bản trong file <đường-dẫn-file>.md
+#auto-test-domain run the scenarios in <path-to-file>.md
+#auto-test-domain chạy kịch bản trong file <đường-dẫn-file>.md
 ```
 
 Copilot reads back the environment of each testcase for you to confirm, runs them one by one,
